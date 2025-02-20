@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #000;
+        }
+
+        #canvas {
+            width: 1280px;
+            height: 720px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script src="https://unpkg.com/@rive-app/webgl2@2.26.0"></script>
+    <script>
+        const canvas = document.getElementById('canvas');
+        canvas.width = 1280;
+        canvas.height = 720;
+        // Initialize Rive with WebGL2 renderer
+        const riveInstance = new rive.Rive({
+            src: "https://davidm-folder.s3.amazonaws.com/real_prompt_v1.riv",
+            canvas: canvas,
+            renderer: 'webgl2',  // Explicitly specify WebGL2 renderer
+            autoplay: true,
+            artboard: "Artboard",  // Update this to match your artboard name
+            stateMachines: "State Machine 1",
+            onLoad: () => {
+                riveInstance.resizeDrawingSurfaceToCanvas();
+                
+                // Get references to all mouse target nodes
+                const mouseTargets = {
+                    target1: riveInstance.artboard.node("Mouse Track Delay 1"),
+                    target2: riveInstance.artboard.node("Mouse Track Delay 2"),
+                    target3: riveInstance.artboard.node("Mouse Track Delay 3"),
+                    target4: riveInstance.artboard.node("Mouse Track Delay 4")
+                };
+                
+                // Mouse position object
+                const mouse = {
+                    x: null,
+                    y: null
+                };
+                
+                // Store previous positions for delayed tracking
+                const previousPositions = [];
+                const maxDelay = 20; // Store positions for 300ms (assuming 20ms per frame)
+                for (let i = 0; i < maxDelay; i++) {
+                    previousPositions.push({ x: 0, y: 0 });
+                }
+                
+                // Function to update mouse position
+                function updateMousePosition(event) {
+                    const rect = canvas.getBoundingClientRect();
+                    
+                    // Calculate normalized position (0-1280x720 range)
+                    mouse.x = (Math.floor(event.x - rect.x) * 1280) / rect.width;
+                    mouse.y = (Math.floor(event.y - rect.y) * 720) / rect.height;
+                    
+                    // Store current position for delayed tracking
+                    previousPositions.push({ x: mouse.x, y: mouse.y });
+                    if (previousPositions.length > maxDelay) {
+                        previousPositions.shift();
+                    }
+                    
+                    // Update all trackers with their respective delays
+                    const delays = {
+                        target1: 10,  // Mouse Track Delay 1
+                        target2: 12,  // Mouse Track Delay 2
+                        target3: 14,  // Mouse Track Delay 3
+                        target4: 16   // Mouse Track Delay 4
+                    };
+                    
+                    Object.entries(delays).forEach(([target, delay]) => {
+                        const delayedPosition = previousPositions[previousPositions.length - delay - 1] || mouse;
+                        if (mouseTargets[target]) {
+                            mouseTargets[target].x = delayedPosition.x;
+                            mouseTargets[target].y = delayedPosition.y;
+                        }
+                    });
+                }
+                
+                // Add mouse move event listener
+                document.addEventListener("mousemove", updateMousePosition);
+            }
+        });
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (riveInstance) {
+                riveInstance.resizeDrawingSurfaceToCanvas();
+            }
+        });
+    </script>
+</body>
+</html>
